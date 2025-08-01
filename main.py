@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import shutil
@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import get_db
 from models import Report, Record, AuthResult
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 app = FastAPI()
@@ -56,8 +56,8 @@ async def parse_and_store(xml_path: str, db: AsyncSession):
     date_end = root.findtext(".//report_metadata/date_range/end", namespaces=ns)
 
     # convent timestamps to datetime
-    date_start = datetime.fromtimestamp(normalize_ts(int(date_start)))
-    date_end = datetime.fromtimestamp(normalize_ts(int(date_end)))
+    date_start = datetime.fromtimestamp(int(date_start))
+    date_end = datetime.fromtimestamp(int(date_end))
 
     # extract policy_published
     policy_domain = root.findtext(".//policy_published/domain", namespaces=ns)
@@ -131,7 +131,7 @@ async def parse_and_store(xml_path: str, db: AsyncSession):
     await db.commit()
 
 
-# Application routes
+# Application Frontend routes
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -145,7 +145,7 @@ async def home(request: Request):
 async def upload_file(
     request: Request, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)
 ):
-    if not file.filename.endswith(".zip"):
+    if not str(file.filename).endswith(".zip"):
         return templates.TemplateResponse(
             "upload.html", {"request": request, "message": "only .zip file is allowed"}
         )
@@ -154,9 +154,9 @@ async def upload_file(
     upload_dir = os.path.join(UPLOADS_FOLDER, timestamp)
     os.makedirs(upload_dir, exist_ok=True)
 
-    zip_path = os.path.join(upload_dir, file.filename)
+    zip_path = os.path.join(upload_dir, str(file.filename))
 
-    file_path = os.path.join(UPLOADS_FOLDER, file.filename)
+    file_path = os.path.join(UPLOADS_FOLDER, str(file.filename))
     with open(zip_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     # extract Zip
@@ -214,3 +214,51 @@ async def report_details(
     return templates.TemplateResponse(
         "report_details.html", {"request": request, "report": report}
     )
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+# Application API Routes
+@app.get("/api/dashboard", response_class=JSONResponse)
+async def dashboard_data(db: AsyncSession = Depends(get_db)):
+    total_reports = await db.scalar(select(func.count(Report.id)))
+    total_messages = await db.scalar(select(func.coalesce(func.sum(Record.count), 0)))
+
+    disposition_result = await db.execute(
+        select(Record.disposition, func.sum(Record.count)).group_by(Record.disposition)
+    )
+
+    disposition_counts = {row[0]: row[1] for row in disposition_result}
+
+    spf_result = await db.execute(
+        select(Record.spf_result, func.sum(Record.count)).group_by(Record.spf_result)
+    )
+
+    spf_counts = {row[0]: row[1] for row in spf_result}
+
+    dkim_result = await db.execute(
+        select(Record.dkim_result, func.sum(Record.count)).group_by(Record.dkim_result)
+    )
+
+    dkim_counts = {row[0]: row[1] for row in dkim_result}
+
+    top_ips_query = await db.execute(
+        select(Record.source_ip, func.sum(Record.count))
+        .group_by(Record.source_ip)
+        .order_by(func.sum(Record.count).desc())
+        .limit(5),
+    )
+
+    top_ips = [{"ip": row[0], "count": row[1]} for row in top_ips_query]
+
+    return {
+        "total_reports": total_reports or 0,
+        "total_messages": total_messages or 0,
+        "disposition_counts": disposition_counts,
+        "spf_results": spf_counts,
+        "dkim_results": dkim_counts,
+        "top_ips": top_ips,
+    }

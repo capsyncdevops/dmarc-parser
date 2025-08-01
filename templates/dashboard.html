@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>DMARC Dashboard</h2>
+    <!-- Summary Cards  -->
+    <div class="row text-center mb-4">
+        <div class="col-md-6">
+            <div class="card text-bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Reports</h5>
+                    <h3 id="totalReports">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Total Messages</h5>
+                    <h3 id="totalMessages">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Charts  -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <canvas id="dispositionChart"></canvas>
+        </div>
+        <div class="col-md-4 mb-4">
+            <canvas id="spfChart"></canvas>
+        </div>
+        <div class="col-md-4 mb-4">
+            <canvas id="dkimChart"></canvas>
+        </div>
+    </div>
+    <!-- Top IPs -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h4>Top Sending IPs</h4>
+            <canvas id="topIpsChart"></canvas>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    async function loadDashboard() {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json()
+
+        document.getElementById('totalReports').innerText = data.total_reports;
+        document.getElementById('totalMessages').innerText = data.total_messages;
+
+        new Chart(document.getElementById('dispositionChart'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(data.disposition_counts),
+                datasets: [{
+                    data: Object.values(data.disposition_counts),
+                    backgroundColor: ['#0d6efd', '#ffc107', '#dc3545']
+                }]
+            },
+            Options: { plugins: { title: { display: true, text: 'Disposition' } } }
+        })
+
+        new Chart(document.getElementById('spfChart'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(data.spf_results),
+                datasets: [{
+                    data: Object.values(data.spf_results),
+                    backgroundColor: ['#dc3545', '#198754']
+
+                }]
+            },
+            Options: { plugins: { title: { display: true, text: 'SPF Results' } } }
+        })
+
+        new Chart(document.getElementById('dkimChart'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(data.dkim_results),
+                datasets: [{
+                    data: Object.values(data.dkim_results),
+                    backgroundColor: ['#198754', '#dc3545']
+
+                }]
+            },
+            Options: { plugins: { title: { display: true, text: 'DKIM Results' } } }
+        })
+
+        const ipLabels = data.top_ips.map(ip => ip.ip);
+        const ipCounts = data.top_ips.map(ip => ip.count);
+
+        new Chart(document.getElementById("topIpsChart"), {
+            type: 'bar',
+            data: {
+                labels: ipLabels,
+                datasets: [{
+                    label: 'Messages',
+                    data: ipCounts,
+                    backgroundColor: '#0d6efd'
+                }]
+            },
+            options: {
+                plugins: { title: { display: true, text: "Top Sending IPs" } },
+                responsive: true,
+                scales: { y: { begingAtZero: true } }
+            }
+        });
+    }
+    loadDashboard();
+</script>
+{% endblock %}

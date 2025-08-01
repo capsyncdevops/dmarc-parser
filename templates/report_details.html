@@ -34,8 +34,13 @@
             <td>{{ rec.source_ip }}</td>
             <td>{{ rec.count }}</td>
             <td>{{ rec.disposition }}</td>
-            <td>{{ rec.dkim_result }}</td>
-            <td>{{ rec.spf_result }}</td>
+            <td class="{% if rec.dkim_result == 'pass' %} text-success {% else %} text-danger {% endif %} ">{{
+                rec.dkim_result |capitalize
+                }}</td>
+            <td class="{% if rec.spf_result == 'pass' %} text-success {% else %} text-danger {% endif %} ">{{
+                rec.spf_result | capitalize
+                }}
+            </td>
             <td>{{ rec.header_from }}</td>
             <td>
                 {% if rec.auth_results %}
@@ -53,7 +58,8 @@
                         <tr>
                             <td>{{ auth.auth_type|upper }}</td>
                             <td>{{ auth.domain }}</td>
-                            <td>{{ auth.result }}</td>
+                            <td class="{% if auth.result == 'pass' %}text-success{% else %}text-danger{% endif %} ">{{
+                                auth.result |capitalize}}</td>
                             <td>{{ auth.selector if auth.selector else '-' }}</td>
                         </tr>
                         {% endfor %}

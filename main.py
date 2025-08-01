@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import shutil
 import os
-import zipfile
+import zipfile, gzip, tarfile, shutil
 from datetime import datetime
 import xml.etree.ElementTree as ET
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from db import get_db
 from models import Report, Record, AuthResult
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from pathlib import Path
 
 app = FastAPI()
 
@@ -24,6 +25,49 @@ os.makedirs(UPLOADS_FOLDER, exist_ok=True)
 
 
 #  Utility functions
+
+
+def extract_report(file_path: str, extract_to: str) -> list[str]:
+    """
+    Extract DMARC report file to extract_to folder.
+    Supports .zip, .gz, .tar.gz
+    Returns list of extracted XML file paths.
+    """
+    extracted_files = []
+    path = Path(file_path)
+    extract_dir = Path(extract_to)
+    extract_dir.mkdir(parents=True, exist_ok=True)
+
+    if path.suffix == ".zip":
+        with zipfile.ZipFile(path, "r") as z:
+            z.extractall(extract_dir)
+            extracted_files = [
+                str(extract_dir / name)
+                for name in z.namelist()
+                if name.endswith(".xml")
+            ]
+
+    elif path.suffix == ".gz" and not path.name.endswith(".tar.gz"):
+        # Single XML inside .gz
+        out_file = extract_dir / path.stem  # remove .gz
+        with gzip.open(path, "rb") as gz_in:
+            with open(out_file, "wb") as out_f:
+                shutil.copyfileobj(gz_in, out_f)
+        if out_file.suffix == "":
+            out_file = out_file.with_suffix(".xml")  # rename if missing extension
+        extracted_files = [str(out_file)]
+
+    elif path.name.endswith(".tar.gz"):
+        with tarfile.open(path, "r:gz") as tar:
+            tar.extractall(extract_dir)
+            extracted_files = [str(f) for f in extract_dir.rglob("*.xml")]
+
+    else:
+        raise ValueError(f"Unsupported file format: {path.suffixes}")
+
+    return extracted_files
+
+
 def normalize_ts(ts: str) -> int:
     val = int(ts)
     if val > 1e12:  # Likely milliseconds
@@ -145,13 +189,13 @@ async def home(request: Request):
 async def upload_file(
     request: Request, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)
 ):
-    if not str(file.filename).endswith(".zip"):
+    if not str(file.filename).endswith((".zip", ".gz", ".tar.gz")):
         return templates.TemplateResponse(
             "upload.html", {"request": request, "message": "only .zip file is allowed"}
         )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    upload_dir = os.path.join(UPLOADS_FOLDER, timestamp)
+    upload_dir = Path(os.path.join(UPLOADS_FOLDER, timestamp))
     os.makedirs(upload_dir, exist_ok=True)
 
     zip_path = os.path.join(upload_dir, str(file.filename))
@@ -160,13 +204,13 @@ async def upload_file(
     with open(zip_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     # extract Zip
-    extracted_files = []
+    extracted_files = extract_report(str(zip_path), "extracted")
 
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        for name in zip_ref.namelist():
-            if name.endswith(".xml"):
-                zip_ref.extract(name, upload_dir)
-                extracted_files.append(os.path.join(upload_dir, name))
+    # with zipfile.ZipFile(zip_path, "r") as zip_ref:
+    #     for name in zip_ref.namelist():
+    #         if name.endswith(".xml"):
+    #             zip_ref.extract(name, upload_dir)
+    #             extracted_files.append(os.path.join(upload_dir, name))
     # parse each xml file and insert into DB
     for xml_file in extracted_files:
         await parse_and_store(xml_file, db)

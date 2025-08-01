@@ -11,3 +11,4 @@ wheels/
 
 uploads/*
 *.sqlite*
+extracted/*

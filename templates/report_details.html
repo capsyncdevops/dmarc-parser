@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Report Details</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3 class="card-title">{{ report.policy_domain }}</h3><br>
+        <p><strong>Org:</strong> {{ report.org_name }}</p>
+        <p><strong>Email:</strong> {{ report.email }}</p>
+        <p><strong>Date Range:</strong> {{ report.date_start.strftime('%Y-%m-%d') }} to {{
+            report.date_end.strftime('%Y-%m-%d') }}</p>
+        <p><strong>Policy:</strong> {{ report.policy_p|capitalize }} (adkim={{ report.policy_adkim }}, aspf={{
+            report.policy_aspf }})</p>
+    </div>
+</div>
+
+<h4>Records</h4>
+{% if report.records %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Source IP</th>
+            <th>Count</th>
+            <th>Disposition</th>
+            <th>DKIM</th>
+            <th>SPF</th>
+            <th>Header From</th>
+            <th>Auth Results</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rec in report.records %}
+        <tr>
+            <td>{{ rec.source_ip }}</td>
+            <td>{{ rec.count }}</td>
+            <td>{{ rec.disposition }}</td>
+            <td>{{ rec.dkim_result }}</td>
+            <td>{{ rec.spf_result }}</td>
+            <td>{{ rec.header_from }}</td>
+            <td>
+                {% if rec.auth_results %}
+                <table class="table table-sm table-borderless">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Domain</th>
+                            <th>Result</th>
+                            <th>Selector</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for auth in rec.auth_results %}
+                        <tr>
+                            <td>{{ auth.auth_type|upper }}</td>
+                            <td>{{ auth.domain }}</td>
+                            <td>{{ auth.result }}</td>
+                            <td>{{ auth.selector if auth.selector else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <span class="text-muted">No auth results</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-info">No records found for this report.</div>
+{% endif %}
+
+<a href="/reports" class="btn btn-secondary mt-3">Back to Reports</a>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2>DMARC Reports</h2>
+{% if reports %}
+<table class="table table-bordered table-striped mt-4">
+    <thead class="table-dark">
+        <tr>
+            <th>Org Name</th>
+            <th>Email</th>
+            <th>Domain</th>
+            <th>Date Range</th>
+            <th>Policy</th>
+            <th>Report ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in reports %}
+        <tr>
+            <td>{{ report.org_name }}</td>
+            <td>{{ report.email }}</td>
+            <td>{{ report.policy_domain }}</td>
+            <td>{{ report.date_start.strftime("%Y-%m-%d") }} to {{ report.date_end.strftime("%Y-%m-%d") }}</td>
+            <td>{{ report.policy_p | capitalize }}</td>
+            <td>
+                <a href="/reports/{{ report.id }}" class="btn btn-sm btn-primary">
+                    View Details
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-info mt-4">No reports uploaded yet. </div>
+{% endif %}
+{% endblock %}

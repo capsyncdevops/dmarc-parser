@@ -34,12 +34,15 @@
             <td>{{ rec.source_ip }}</td>
             <td>{{ rec.count }}</td>
             <td>{{ rec.disposition }}</td>
-            <td class="{% if rec.dkim_result == 'pass' %} text-success {% else %} text-danger {% endif %} ">{{
-                rec.dkim_result |capitalize
-                }}</td>
-            <td class="{% if rec.spf_result == 'pass' %} text-success {% else %} text-danger {% endif %} ">{{
-                rec.spf_result | capitalize
-                }}
+            <td><span
+                    class="badge rounded-pill {% if rec.dkim_result == 'pass' %} bg-success {% else %} bg-danger {% endif %} ">
+                    {{rec.dkim_result |capitalize}}
+                </span>
+            </td>
+            <td><span
+                    class="badge rounded-pill {% if rec.spf_result == 'pass' %} bg-success {% else %} bg-danger {% endif %} ">
+                    {{rec.spf_result | capitalize}}
+                </span>
             </td>
             <td>{{ rec.header_from }}</td>
             <td>
@@ -58,8 +61,12 @@
                         <tr>
                             <td>{{ auth.auth_type|upper }}</td>
                             <td>{{ auth.domain }}</td>
-                            <td class="{% if auth.result == 'pass' %}text-success{% else %}text-danger{% endif %} ">{{
-                                auth.result |capitalize}}</td>
+                            <td>
+                                <span
+                                    class="badge rounded-pill {% if rec.dkim_result == 'pass' %} bg-success {% else %} bg-danger {% endif %} ">
+                                    {{auth.result |capitalize}}
+                                </span>
+                            </td>
                             <td>{{ auth.selector if auth.selector else '-' }}</td>
                         </tr>
                         {% endfor %}

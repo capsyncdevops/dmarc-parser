@@ -100,8 +100,8 @@ async def parse_and_store(xml_path: str, db: AsyncSession):
     date_end = root.findtext(".//report_metadata/date_range/end", namespaces=ns)
 
     # convent timestamps to datetime
-    date_start = datetime.fromtimestamp(int(date_start))
-    date_end = datetime.fromtimestamp(int(date_end))
+    date_start = datetime.fromtimestamp(int(date_start or 0))
+    date_end = datetime.fromtimestamp(int(date_end or 0))
 
     # extract policy_published
     policy_domain = root.findtext(".//policy_published/domain", namespaces=ns)
@@ -138,7 +138,7 @@ async def parse_and_store(xml_path: str, db: AsyncSession):
         record = Record(
             report_id=report.id,
             source_ip=source_ip,
-            count=int(count),
+            count=int(count or 0),
             disposition=disposition,
             dkim_result=dkim_result,
             spf_result=spf_result,

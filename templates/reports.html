@@ -1,7 +1,18 @@
 {% extends 'base.html' %}
 {% block content %}
+<div class="d-flex justify-content-between">
+    <h2>DMARC Reports</h2>
+    <div>
+        <button id="syncBtn" class="btn btn-dark mb-3 material-symbols-outlined">
+            cloud_sync
+        </button>
+    </div>
+</div>
 
-<h2>DMARC Reports</h2>
+<div id="spinner" class="spinner-border text-primary ms-2" role="status" style="display: none;">
+    <span class="visually-hidden">Loading....</span>
+</div>
+
 {% if reports %}
 <table class="table table-bordered table-striped mt-4">
     <thead class="table-dark">
@@ -34,4 +45,51 @@
 {% else %}
 <div class="alert alert-info mt-4">No reports uploaded yet. </div>
 {% endif %}
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="toast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                <!-- Message -->
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById("syncBtn").addEventListener("click", async () => {
+        const btn = document.getElementById("syncBtn");
+        const spinner = document.getElementById("spinner");
+        const toastEl = document.getElementById("toast");
+        const toastMsg = document.getElementById("toastMessage");
+        const toast = new bootstrap.Toast(toastEl);
+
+        btn.disabled = true;
+        spinner.style.display = "inline-block";
+
+        try {
+            const res = await fetch("/sync-reports", { method: "POST" });
+            const data = await res.json();
+
+            if (res.ok) {
+                toastMsg.innerText = `Sync completed. Processed ${data.processed?.lenght || 0} files.`
+                toastEl.classList.remove("text-bg-danger");
+                toastEl.classList.add("text-bg-success");
+            }
+            else {
+                throw new Error(data.detail || "Sync Failed");
+            }
+        } catch (err) {
+            toastMsg.innerText = `${err.message}`;
+            toastEl.classList.remove("text-bg-success");
+            toastEl.classList.add("text-bg-danger");
+        }
+        finally {
+            btn.disabled = false;
+            spinner.style.display = "none";
+            toast.show();
+        }
+
+    })
+</script>
 {% endblock %}

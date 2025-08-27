@@ -1,11 +1,15 @@
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from dotenv import load_dotenv
 
-DATABASE_URL = "sqlite+aiosqlite:///.data/db.sqlite3"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///./data/dmarc_parser.sqlite3")
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 
-AsyncSessionLocal = sessionmaker(
+AsyncSessionLocal = async_sessionmaker(
     engine,  # type: ignore
     expire_on_commit=False,
     class_=AsyncSession,

@@ -25,12 +25,15 @@
     <!-- Charts  -->
     <div class="row">
         <div class="col-md-4 mb-4">
+            <h4 class="text-center mb-3 mt-3">Disposition Chart</h4>
             <canvas id="dispositionChart"></canvas>
         </div>
         <div class="col-md-4 mb-4">
+            <h4 class="text-center mb-3 mt-3">SPF Chart</h4>
             <canvas id="spfChart"></canvas>
         </div>
         <div class="col-md-4 mb-4">
+            <h4 class="text-center mb-3 mt-3">DKIM Chart</h4>
             <canvas id="dkimChart"></canvas>
         </div>
     </div>
@@ -82,7 +85,7 @@
                 labels: Object.keys(data.dkim_results),
                 datasets: [{
                     data: Object.values(data.dkim_results),
-                    backgroundColor: ['#198754', '#dc3545']
+                    backgroundColor: ['#dc3545', '#198754']
 
                 }]
             },

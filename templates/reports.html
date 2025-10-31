@@ -72,7 +72,7 @@
             const data = await res.json();
 
             if (res.ok) {
-                toastMsg.innerText = `Sync completed. Processed ${data.processed?.lenght || 0} files.`
+                toastMsg.innerText = `Sync completed. Processed ${data.processed?.length || 0} files.`
                 toastEl.classList.remove("text-bg-danger");
                 toastEl.classList.add("text-bg-success");
             }
